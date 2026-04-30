@@ -1,0 +1,20 @@
+Como usar isso no Power Automate Desktop (PAD):
+
+    No PAD, adicione apenas uma ação: "Executar script do PowerShell".
+    Cole o código completo acima.
+    Configuração de Tempo Limite (Timeout): Nas propriedades dessa ação dentro do Power Automate, vá na aba "Avançado" e aumente o tempo limite ou desative-o (já que o script é um loop infinito).
+    Execute o PAD como Administrador: Isso é obrigatório para que o script tenha permissão de editar o arquivo hosts e matar processos de sistema.
+
+O que este script faz de diferente agora?
+
+    Ele gerencia o próprio tempo (Start-Sleep), então não sobrecarrega seu processador.
+    Ele verifica se o domínio já está bloqueado antes de escrever no arquivo, evitando que o arquivo hosts fique gigante.
+    Ele limpa a pasta Temp automaticamente se detectar um pico de uso de CPU (onde a maioria dos mineradores "portáteis" se instala).
+
+
+    Cole o código acima no campo de script.
+    Certifique-se de que o Power Automate está rodando com privilégios de Administrador (clique com o botão direito no ícone do PAD > Executar como administrador), caso contrário, o Windows bloqueará a alteração no Registro.
+
+Reinicialização:
+
+    As extensões só aparecerão quando os navegadores forem fechados e abertos novamente. Você pode adicionar um comando Stop-Process -Name "chrome", "msedge", "firefox" -Force no início do script para forçar a atualização imediata.
