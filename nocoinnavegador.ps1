@@ -1,5 +1,5 @@
-# --- CONFIGURAÇÃO DAS EXTENSÕES (IDs Oficiais) ---
-# Chrome/Edge ID para NoMiner: jfnangjojcioomickmmnfmiadkfhcdmd
+# --- BROWSER EXTENSION CONFIGURATION (Official IDs) ---
+# Chrome/Edge NoMiner Extension ID: jfnangjojcioomickmmnfmiadkfhcdmd
 $extensionID_Chromium = "jfnangjojcioomickmmnfmiadkfhcdmd"
 $updateURL = "https://clients2.google.com/service/update2/crx"
 
@@ -14,12 +14,11 @@ if (!(Test-Path $pathEdge)) { New-Item -Path $pathEdge -Force }
 Set-ItemProperty -Path $pathEdge -Name "1" -Value "$extensionID_Chromium;$updateURL"
 
 # 3. MOZILLA FIREFOX
-# O Firefox usa um sistema de arquivos ou registro diferente para políticas
+# Firefox uses a different file system or registry structure for policies
 $pathFirefox = "HKLM:\SOFTWARE\Policies\Mozilla\Firefox\Extensions\Install"
 if (!(Test-Path $pathFirefox)) { New-Item -Path $pathFirefox -Force }
-# Link direto para o .xpi do NoMiner no Firefox
+# Direct link to the NoMiner .xpi for Firefox
 $firefoxAddonUrl = "https://mozilla.org"
 Set-ItemProperty -Path $pathFirefox -Name "1" -Value "$firefoxAddonUrl"
 
-Write-Host "Extensões anti-mineração configuradas com sucesso!"
-
+Write-Host "Anti-mining extensions configured successfully!"
