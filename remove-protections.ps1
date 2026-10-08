@@ -34,7 +34,7 @@ $logDirectory = "$env:ProgramData\ProtectMiner"
 $logPath      = "$logDirectory\remove-protections.log"
 
 # --- HELPERS ---
-function Write-Log {
+function Write-ProtectionLog {
     param(
         [Parameter(Mandatory)][string]$Message,
         [ValidateSet("INFO", "WARN", "ERROR")][string]$Level = "INFO"
@@ -58,7 +58,7 @@ function Test-IsAdministrator {
 # --- REMOVAL STEPS ---
 function Remove-HostsEntries {
     if (!(Test-Path $hostsPath)) {
-        Write-Log "Hosts file not found, nothing to revert."
+        Write-ProtectionLog "Hosts file not found, nothing to revert."
         return 0
     }
 
@@ -73,7 +73,7 @@ function Remove-HostsEntries {
 
     $removedCount = $lines.Count - $kept.Count
     if ($removedCount -eq 0) {
-        Write-Log "No ProtectMiner hosts entries found."
+        Write-ProtectionLog "No ProtectMiner hosts entries found."
         return 0
     }
 
@@ -83,7 +83,7 @@ function Remove-HostsEntries {
 
     if ($PSCmdlet.ShouldProcess($hostsPath, "Remove $removedCount ProtectMiner hosts entrie(s)")) {
         Set-Content -Path $hostsPath -Value @($kept) -Encoding ASCII -ErrorAction Stop
-        Write-Log "Removed $removedCount hosts entrie(s)."
+        Write-ProtectionLog "Removed $removedCount hosts entrie(s)."
     }
 
     return $removedCount
@@ -92,7 +92,7 @@ function Remove-HostsEntries {
 function Remove-ExtensionPolicies {
     foreach ($policy in $policyPaths) {
         if (!(Test-Path $policy.Path)) {
-            Write-Log "$($policy.Name): no policy key present."
+            Write-ProtectionLog "$($policy.Name): no policy key present."
             continue
         }
 
@@ -104,14 +104,14 @@ function Remove-ExtensionPolicies {
         })
 
         if ($values.Count -eq 0) {
-            Write-Log "$($policy.Name): no ProtectMiner policy found."
+            Write-ProtectionLog "$($policy.Name): no ProtectMiner policy found."
             continue
         }
 
         foreach ($value in $values) {
             if ($PSCmdlet.ShouldProcess($policy.Path, "Remove value '$($value.Name)'")) {
                 Remove-ItemProperty -Path $policy.Path -Name $value.Name -Force -ErrorAction Stop
-                Write-Log "$($policy.Name): removed policy value '$($value.Name)'."
+                Write-ProtectionLog "$($policy.Name): removed policy value '$($value.Name)'."
             }
         }
 
@@ -120,7 +120,7 @@ function Remove-ExtensionPolicies {
             Where-Object { $_.Name -notlike "PS*" }
         if (@($remaining).Count -eq 0 -and $PSCmdlet.ShouldProcess($policy.Path, "Remove empty policy key")) {
             Remove-Item -Path $policy.Path -Recurse -Force -ErrorAction SilentlyContinue
-            Write-Log "$($policy.Name): removed empty policy key."
+            Write-ProtectionLog "$($policy.Name): removed empty policy key."
         }
     }
 }
@@ -132,7 +132,7 @@ if (!(Test-IsAdministrator)) {
     exit 1
 }
 
-Write-Log "Reverting ProtectMiner changes..."
+Write-ProtectionLog "Reverting ProtectMiner changes..."
 
 $null = Remove-HostsEntries
 Remove-ExtensionPolicies
@@ -143,5 +143,5 @@ if ($PurgeLogs) {
         Write-Host "Log directory deleted: $logDirectory"
     }
 } else {
-    Write-Log "Protection removed. Logs kept at $logDirectory (use -PurgeLogs to delete them)."
+    Write-ProtectionLog "Protection removed. Logs kept at $logDirectory (use -PurgeLogs to delete them)."
 }
