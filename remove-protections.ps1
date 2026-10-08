@@ -96,29 +96,35 @@ function Remove-ExtensionPolicies {
             continue
         }
 
-        $current = Get-ItemProperty -Path $policy.Path -ErrorAction SilentlyContinue
-        $values = @($current.PSObject.Properties | Where-Object {
-            $_.Name -notlike "PS*" -and (
-                $_.Value -like "*$extensionId*" -or $_.Value -eq $firefoxAddonUrl
-            )
+        # Numeric value names like "1" are not reliably exposed as properties on
+        # the Get-ItemProperty result, so read them through the registry key API.
+        $key = Get-Item -Path $policy.Path -ErrorAction SilentlyContinue
+        if ($null -eq $key) {
+            Write-ProtectionLog "$($policy.Name): no policy key present."
+            continue
+        }
+
+        $targets = @($key.GetValueNames() | Where-Object {
+            $storedValue = $key.GetValue($_)
+            ($storedValue -like "*$extensionId*") -or ($storedValue -eq $firefoxAddonUrl)
         })
 
-        if ($values.Count -eq 0) {
+        if ($targets.Count -eq 0) {
             Write-ProtectionLog "$($policy.Name): no ProtectMiner policy found."
             continue
         }
 
-        foreach ($value in $values) {
-            if ($PSCmdlet.ShouldProcess($policy.Path, "Remove value '$($value.Name)'")) {
-                Remove-ItemProperty -Path $policy.Path -Name $value.Name -Force -ErrorAction Stop
-                Write-ProtectionLog "$($policy.Name): removed policy value '$($value.Name)'."
+        foreach ($valueName in $targets) {
+            if ($PSCmdlet.ShouldProcess($policy.Path, "Remove value '$valueName'")) {
+                Remove-ItemProperty -Path $policy.Path -Name $valueName -Force -ErrorAction Stop
+                Write-ProtectionLog "$($policy.Name): removed policy value '$valueName'."
             }
         }
 
         # Delete the key only when this toolkit was the only thing using it.
-        $remaining = @(Get-ItemProperty -Path $policy.Path -ErrorAction SilentlyContinue).PSObject.Properties |
-            Where-Object { $_.Name -notlike "PS*" }
-        if (@($remaining).Count -eq 0 -and $PSCmdlet.ShouldProcess($policy.Path, "Remove empty policy key")) {
+        $key = Get-Item -Path $policy.Path -ErrorAction SilentlyContinue
+        $remaining = if ($null -eq $key) { @() } else { @($key.GetValueNames()) }
+        if ($remaining.Count -eq 0 -and $PSCmdlet.ShouldProcess($policy.Path, "Remove empty policy key")) {
             Remove-Item -Path $policy.Path -Recurse -Force -ErrorAction SilentlyContinue
             Write-ProtectionLog "$($policy.Name): removed empty policy key."
         }
