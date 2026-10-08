@@ -1,4 +1,4 @@
-name: Lint PowerShell
+name: CI
 
 on:
   push:
@@ -24,7 +24,11 @@ jobs:
       - name: Analyze scripts
         shell: pwsh
         run: |
-          $results = @(Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1)
+          # Only the toolkit scripts at the repository root are analyzed:
+          # tests/ is skipped on purpose because the harness mocks built-in
+          # commands such as Get-Item and Remove-Item.
+          $scripts = @(Get-ChildItem -Path . -File | Where-Object { $_.Extension -in '.ps1', '.psd1' })
+          $results = @($scripts | ForEach-Object { Invoke-ScriptAnalyzer -Path $_.FullName -Settings ./PSScriptAnalyzerSettings.psd1 })
 
           if ($results.Count -gt 0) {
             $table = $results |
@@ -42,3 +46,13 @@ jobs:
             Write-Error "PSScriptAnalyzer reported $($errors.Count) error(s)."
             exit 1
           }
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run test harness
+        shell: pwsh
+        run: ./tests/run-tests.ps1
