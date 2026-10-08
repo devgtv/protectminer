@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
     ProtectMiner - antiminer.ps1
     Continuous background monitor that detects, blocks and removes
@@ -32,7 +32,7 @@ function Initialize-LogDirectory {
     }
 }
 
-function Write-Log {
+function Write-ProtectionLog {
     param(
         [Parameter(Mandatory)][string]$Message,
         [ValidateSet("INFO", "WARN", "ERROR")][string]$Level = "INFO"
@@ -65,7 +65,7 @@ function Block-MiningDomains {
         $added++
     }
 
-    if ($added -gt 0) { Write-Log "Blocked $added mining domain(s) in the hosts file." }
+    if ($added -gt 0) { Write-ProtectionLog "Blocked $added mining domain(s) in the hosts file." }
 }
 
 function Stop-MinerProcesses {
@@ -75,9 +75,9 @@ function Stop-MinerProcesses {
         foreach ($process in $processes) {
             try {
                 Stop-Process -Id $process.Id -Force -ErrorAction Stop
-                Write-Log "Terminated suspicious process: $($process.ProcessName) (PID $($process.Id))" "WARN"
+                Write-ProtectionLog "Terminated suspicious process: $($process.ProcessName) (PID $($process.Id))" "WARN"
             } catch {
-                Write-Log "Could not terminate $($process.ProcessName) (PID $($process.Id)): $_" "ERROR"
+                Write-ProtectionLog "Could not terminate $($process.ProcessName) (PID $($process.Id)): $_" "ERROR"
             }
         }
     }
@@ -95,9 +95,9 @@ function Remove-MinerFiles {
                 try {
                     Remove-Item -LiteralPath $file.FullName -Force -ErrorAction Stop
                     $removed++
-                    Write-Log "Removed malicious file: $($file.FullName)" "WARN"
+                    Write-ProtectionLog "Removed malicious file: $($file.FullName)" "WARN"
                 } catch {
-                    Write-Log "Could not remove $($file.FullName): $_" "ERROR"
+                    Write-ProtectionLog "Could not remove $($file.FullName): $_" "ERROR"
                 }
             }
         }
@@ -123,9 +123,11 @@ function Clear-TempFolder {
         try {
             Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction Stop
             $removed++
-        } catch { }
+        } catch {
+            Write-Verbose "Skipped locked Temp item: $($_.Exception.Message)"
+        }
     }
-    Write-Log "CPU above $cpuThreshold% for $cpuCyclesNeeded consecutive cycles - Temp cleaned ($removed item(s))." "WARN"
+    Write-ProtectionLog "CPU above $cpuThreshold% for $cpuCyclesNeeded consecutive cycles - Temp cleaned ($removed item(s))." "WARN"
 }
 
 function Remove-SuspiciousScheduledTasks {
@@ -140,9 +142,9 @@ function Remove-SuspiciousScheduledTasks {
     foreach ($task in $tasks) {
         try {
             Unregister-ScheduledTask -TaskName $task.TaskName -Confirm:$false -ErrorAction Stop
-            Write-Log "Removed suspicious scheduled task: $($task.TaskName)" "WARN"
+            Write-ProtectionLog "Removed suspicious scheduled task: $($task.TaskName)" "WARN"
         } catch {
-            Write-Log "Could not remove scheduled task $($task.TaskName): $_" "ERROR"
+            Write-ProtectionLog "Could not remove scheduled task $($task.TaskName): $_" "ERROR"
         }
     }
 }
@@ -177,7 +179,7 @@ Write-Host "Anti-Miner Protection Monitor
 
 Log file: $logPath"
 
-Write-Log "Monitor started (interval: $intervalSeconds s)."
+Write-ProtectionLog "Monitor started (interval: $intervalSeconds s)."
 
 $cycle = 0
 $highCpuCycles = 0
@@ -196,7 +198,7 @@ do {
         $cpuLoad = Get-CpuLoad
         if ($cpuLoad -gt $cpuThreshold) {
             $highCpuCycles++
-            Write-Log "CPU load at $cpuLoad% ($highCpuCycles/$cpuCyclesNeeded)." "WARN"
+            Write-ProtectionLog "CPU load at $cpuLoad% ($highCpuCycles/$cpuCyclesNeeded)." "WARN"
             if ($highCpuCycles -ge $cpuCyclesNeeded) {
                 Clear-TempFolder
                 $highCpuCycles = 0
@@ -207,9 +209,9 @@ do {
 
         Remove-SuspiciousScheduledTasks
 
-        Write-Log "Cycle $cycle completed."
+        Write-ProtectionLog "Cycle $cycle completed."
     } catch {
-        Write-Log "Error: $_" "ERROR"
+        Write-ProtectionLog "Error: $_" "ERROR"
     }
 
     if ($Once) { break }
