@@ -27,7 +27,7 @@ $logDirectory = "$env:ProgramData\ProtectMiner"
 $logPath      = "$logDirectory\antiminer-browser.log"
 
 # --- HELPERS ---
-function Write-Log {
+function Write-ProtectionLog {
     param(
         [Parameter(Mandatory)][string]$Message,
         [ValidateSet("INFO", "WARN", "ERROR")][string]$Level = "INFO"
@@ -64,7 +64,7 @@ function Set-ExtensionPolicy {
     $duplicated = $current.PSObject.Properties |
         Where-Object { $_.Name -notlike "PS*" -and $_.Value -eq $Value }
     if ($duplicated) {
-        Write-Log "$Name already configured (value stored in '$($duplicated.Name)')."
+        Write-ProtectionLog "$Name already configured (value stored in '$($duplicated.Name)')."
         return
     }
 
@@ -74,7 +74,7 @@ function Set-ExtensionPolicy {
     }
 
     New-ItemProperty -Path $Path -Name $index -Value $Value -PropertyType String -Force | Out-Null
-    Write-Log "$Name configured at registry index $index."
+    Write-ProtectionLog "$Name configured at registry index $index."
 }
 
 # --- STARTUP ---
@@ -88,7 +88,7 @@ if (!(Test-Path $logDirectory)) {
     New-Item -Path $logDirectory -ItemType Directory -Force | Out-Null
 }
 
-Write-Log "Configuring NoMiner force-install policies..."
+Write-ProtectionLog "Configuring NoMiner force-install policies..."
 
 # 1. GOOGLE CHROME
 Set-ExtensionPolicy -Path $chromePolicyPath -Name "Google Chrome" -Value "$extensionId;$chromeUpdateUrl"
@@ -99,7 +99,7 @@ Set-ExtensionPolicy -Path $edgePolicyPath -Name "Microsoft Edge" -Value "$extens
 # 3. MOZILLA FIREFOX (policy: Extensions > Install, requires a full .xpi URL)
 Set-ExtensionPolicy -Path $firefoxPolicyPath -Name "Mozilla Firefox" -Value $firefoxAddonUrl
 
-Write-Log "NoMiner policies configured successfully."
+Write-ProtectionLog "NoMiner policies configured successfully."
 Write-Host ""
 Write-Host "Next step: close every browser window and reopen them." -ForegroundColor Yellow
 Write-Host "To force a restart:" -ForegroundColor Yellow
