@@ -58,22 +58,26 @@ function Set-ExtensionPolicy {
         New-Item -Path $Path -Force | Out-Null
     }
 
-    $current = Get-ItemProperty -Path $Path -ErrorAction SilentlyContinue
-    if ($null -eq $current) { $current = New-Object PSObject }
+    # Read the values through the registry key API: numeric value names such as
+    # "1" are not reliably exposed as properties on the Get-ItemProperty result.
+    $key = Get-Item -Path $Path -ErrorAction SilentlyContinue
+    if ($null -eq $key) { return }
 
-    $duplicated = $current.PSObject.Properties |
-        Where-Object { $_.Name -notlike "PS*" -and $_.Value -eq $Value }
-    if ($duplicated) {
-        Write-ProtectionLog "$Name already configured (value stored in '$($duplicated.Name)')."
-        return
+    $valueNames = @($key.GetValueNames())
+
+    foreach ($existing in $valueNames) {
+        if ($key.GetValue($existing) -eq $Value) {
+            Write-ProtectionLog "$Name already configured (value stored in '$existing')."
+            return
+        }
     }
 
     $index = 1
-    while ($current.PSObject.Properties | Where-Object { $_.Name -eq "$index" }) {
+    while ($valueNames -contains "$index") {
         $index++
     }
 
-    New-ItemProperty -Path $Path -Name $index -Value $Value -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $Path -Name "$index" -Value $Value -PropertyType String -Force | Out-Null
     Write-ProtectionLog "$Name configured at registry index $index."
 }
 
